@@ -2,19 +2,23 @@ pipeline {
   agent any
 
   environment {
-    PROJECT_DIR = "."
+    // This MUST be a path that exists on the Docker HOST (your WSL path)
+    HOST_PROJECT_DIR = "/mnt/p/logops-dashboard/logops-dashboard"
   }
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Tests') {
       steps {
         sh '''
-          cd ${PROJECT_DIR}
-          docker run --rm -v "$PWD":/app -w /app python:3.11-slim \
+          docker run --rm \
+            -v "${HOST_PROJECT_DIR}":/app -w /app \
+            python:3.11-slim \
             bash -lc "pip install -r requirements.txt && pytest -q"
         '''
       }
@@ -23,18 +27,15 @@ pipeline {
     stage('Build & Deploy') {
       steps {
         sh '''
-          cd ${PROJECT_DIR}
-
-          # Bring down existing stack (ignore errors)
+          # Use docker/compose container so we don't need compose inside Jenkins
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD":/work -w /work \
+            -v "${HOST_PROJECT_DIR}":/work -w /work \
             docker/compose:1.29.2 down || true
 
-          # Build and start
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD":/work -w /work \
+            -v "${HOST_PROJECT_DIR}":/work -w /work \
             docker/compose:1.29.2 up --build -d
 
           sleep 3
