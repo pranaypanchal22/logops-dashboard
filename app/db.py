@@ -1,7 +1,9 @@
+import os
 import sqlite3
 from flask import g
 
-DB_PATH = "logs.db"
+DB_PATH = os.getenv("DB_PATH", "logs.db")
+
 
 def get_db():
     if "db" not in g:

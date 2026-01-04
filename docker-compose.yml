@@ -4,8 +4,10 @@ services:
     #container_name: logops_app
     ports:
       - "5000:5000"
+    environment:
+      - DB_PATH=/app/data/logs.db
     volumes:
-      - ./logs.db:/app/logs.db
+      - logops_data:/app/data
 
   nginx:
     image: nginx:alpine
