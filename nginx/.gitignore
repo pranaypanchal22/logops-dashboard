@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+
+# SQLite / runtime data
+*.db
+/app/data/
+logs.db
+
+# OS
+.DS_Store
