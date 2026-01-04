@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>LogOps Dashboard</h1>
+<p class="muted">Mini-Splunk (Flask + SQLite). Use /api/logs to ingest logs.</p>
+
+{% if alert_active %}
+<div class="alert on">
+  <strong>ALERT ACTIVE</strong> — ERRORs in last {{ minutes }} min = {{ errors_last_window }} (threshold {{ alert_threshold }})
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="card col">
+    <h3>Errors last {{ minutes }} minutes</h3>
+    <div style="font-size: 40px;">{{ errors_last_window }}</div>
+  </div>
+
+  <div class="card col">
+    <h3>Top services by errors</h3>
+    <table>
+      <tr><th>Service</th><th>Errors</th></tr>
+      {% for r in top_services %}
+        <tr><td>{{ r["service"] }}</td><td>{{ r["c"] }}</td></tr>
+      {% else %}
+        <tr><td colspan="2">No error data</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Search / Filter</h3>
+  <form method="get" action="/dashboard">
+    <label>Minutes:
+      <input name="minutes" type="number" value="{{ minutes }}" min="1" max="1440" />
+    </label>
+    <label>Level:
+      <select name="level">
+        <option value="">Any</option>
+        <option value="INFO" {% if level=="INFO" %}selected{% endif %}>INFO</option>
+        <option value="WARN" {% if level=="WARN" %}selected{% endif %}>WARN</option>
+        <option value="ERROR" {% if level=="ERROR" %}selected{% endif %}>ERROR</option>
+      </select>
+    </label>
+    <label>Service:
+      <input name="service" value="{{ service }}" placeholder="auth, payments..." />
+    </label>
+    <label>Text:
+      <input name="q" value="{{ q }}" placeholder="search message" />
+    </label>
+    <label>Alert threshold:
+      <input name="alert_threshold" type="number" value="{{ alert_threshold }}" min="1" />
+    </label>
+    <button type="submit">Apply</button>
+    <a href="/dashboard">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Recent logs (last {{ minutes }} minutes + filters)</h3>
+  <table>
+    <tr><th>Time</th><th>Level</th><th>Service</th><th>Message</th></tr>
+    {% for log in logs %}
+      <tr>
+        <td>{{ log["timestamp"] }}</td>
+        <td>{{ log["level"] }}</td>
+        <td>{{ log["service"] }}</td>
+        <td>{{ log["message"] }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4">No logs found</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

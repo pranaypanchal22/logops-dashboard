@@ -1,0 +1,28 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+
+      # Mount host docker CLI into Jenkins container
+      - /usr/bin/docker:/usr/bin/docker:ro
+
+      # Mount common locations where the compose plugin may exist (safe if present)
+      - /usr/local/lib/docker/cli-plugins:/usr/local/lib/docker/cli-plugins:ro
+      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins:ro
+      - /home/pranay/.docker/cli-plugins:/home/pranay/.docker/cli-plugins:ro
+
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  jenkins_home:
