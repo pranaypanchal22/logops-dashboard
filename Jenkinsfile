@@ -17,29 +17,21 @@ pipeline {
     stage('Tests') {
   steps {
     sh '''
-      set -e
+      set -euxo pipefail
 
-      echo "Finding requirements.txt..."
-      REQ_PATH="$(find . -maxdepth 3 -name requirements.txt -print -quit)"
-      if [ -z "$REQ_PATH" ]; then
-        echo "❌ requirements.txt not found!"
-        echo "Workspace contents:"
-        ls -la
-        exit 1
-      fi
-
-      APP_DIR="$(dirname "$REQ_PATH")"
-      echo "Using APP_DIR=$APP_DIR"
-      ls -la "$APP_DIR"
+      echo "Workspace is: $WORKSPACE"
+      ls -la "$WORKSPACE"
+      test -f "$WORKSPACE/requirements.txt"
 
       docker run --rm \
         -v "$WORKSPACE":/repo \
-        -w "/repo/$APP_DIR" \
+        -w /repo \
         python:3.11-slim \
-        bash -lc "pip install -r requirements.txt && pytest -q"
+        bash -lc "ls -la && test -f requirements.txt && pip install -r requirements.txt && pytest -q"
     '''
   }
 }
+
 
 
     stage('Build & Deploy') {
@@ -63,20 +55,21 @@ pipeline {
         -w "/repo/$APP_DIR" \
         docker/compose:1.29.2 -p logops up --build -d
 
-      echo "Waiting for host health..."
-      for i in $(seq 1 30); do
-        if curl -fsS http://localhost:8080/health | grep -q "ok"; then
-          echo "✅ Health check OK"
-          exit 0
-        fi
-        sleep 1
-      done
+      echo "Waiting for health on host port 8080..."
+for i in $(seq 1 30); do
+  if docker run --rm --network host curlimages/curl:8.6.0 -fsS http://localhost:8080/health | grep -q ok; then
+    echo "✅ Health check OK"
+    exit 0
+  fi
+  sleep 1
+done
 
-      echo "❌ Health check FAILED"
-      docker ps
-      docker logs logops_app_1 --tail 80 || true
-      docker logs logops_nginx_1 --tail 80 || true
-      exit 1
+echo "❌ Health check FAILED"
+docker ps
+docker logs logops_app_1 --tail 80 || true
+docker logs logops_nginx_1 --tail 120 || true
+exit 1
+
     '''
   }
 }
