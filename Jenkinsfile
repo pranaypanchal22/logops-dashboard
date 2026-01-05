@@ -19,18 +19,24 @@ pipeline {
     sh '''
       set -euxo pipefail
 
-      echo "Workspace is: $WORKSPACE"
-      ls -la "$WORKSPACE"
-      test -f "$WORKSPACE/requirements.txt"
+      # Copy SCM checkout (inside Jenkins container) to a HOST-mounted folder
+      rm -rf /workspace/repo
+      mkdir -p /workspace/repo
+      cp -a . /workspace/repo
+
+      echo "Contents in /workspace/repo:"
+      ls -la /workspace/repo
+      test -f /workspace/repo/requirements.txt
 
       docker run --rm \
-        -v "$WORKSPACE":/repo \
+        -v "/workspace/repo":/repo \
         -w /repo \
         python:3.11-slim \
         bash -lc "ls -la && test -f requirements.txt && pip install -r requirements.txt && pytest -q"
     '''
   }
 }
+
 
 
 
@@ -44,16 +50,17 @@ pipeline {
       echo "Using APP_DIR=$APP_DIR"
 
       docker run --rm \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "$WORKSPACE":/repo \
-        -w "/repo/$APP_DIR" \
-        docker/compose:1.29.2 -p logops down || true
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "/workspace/repo":/work \
+  -w /work \
+  docker/compose:1.29.2 -p logops down || true
 
-      docker run --rm \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "$WORKSPACE":/repo \
-        -w "/repo/$APP_DIR" \
-        docker/compose:1.29.2 -p logops up --build -d
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "/workspace/repo":/work \
+  -w /work \
+  docker/compose:1.29.2 -p logops up --build -d
+
 
       echo "Waiting for health on host port 8080..."
 for i in $(seq 1 30); do
